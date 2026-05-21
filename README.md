@@ -19,7 +19,7 @@
   
   <br />
 
-  [🚀 Live Demo](https://oncampus-web.vercel.app) · [🐛 Report Bug](https://github.com/Yashkush06/OnCampus/issues) · [💡 Request Feature](https://github.com/Yashkush06/OnCampus/issues)
+  [🚀 Live Demo](https://oncampus.yashkush.xyz) · [🐛 Report Bug](https://github.com/Yashkush06/OnCampus/issues) · [💡 Request Feature](https://github.com/Yashkush06/OnCampus/issues)
 
 </div>
 
