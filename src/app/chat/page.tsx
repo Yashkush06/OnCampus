@@ -1,244 +1,307 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, MapPin, Users, ChevronRight, MessageCircle } from "lucide-react";
+import { Send, Image as ImageIcon, MapPin, Smile, Globe2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useChat } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 
-const VIBE_METADATA: Record<string, { color: string; label: string; icon: string }> = {
-  chill: { color: "var(--color-neon-blue)", label: "Chill", icon: "🍃" },
-  study: { color: "var(--color-neon-purple)", label: "Study", icon: "📚" },
-  gaming: { color: "var(--color-neon-pink)", label: "Gaming", icon: "🎮" },
-  food: { color: "#FFB000", label: "Food", icon: "🍜" },
-  sports: { color: "#00FF47", label: "Sports", icon: "⚽" },
-  party: { color: "#FF0055", label: "Party", icon: "🎉" },
-};
-
-const getVibeInfo = (tag: string) => {
-  const normalized = tag.toLowerCase();
-  return VIBE_METADATA[normalized] || { color: "var(--color-neon-blue)", label: tag, icon: "✨" };
-};
-
-export default function ChatInboxPage() {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [inbox, setInbox] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+// This is the actual Chat Room UI
+function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUserId: string }) {
+  const [newMessage, setNewMessage] = useState("");
+  const [showReactions, setShowReactions] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
-  const router = useRouter();
 
-  // 1. Resolve session
+  const { messages, sendMessage } = useChat(sceneId);
+
   useEffect(() => {
-    const checkUser = async () => {
-      let { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-      } else {
-        setLoading(false);
-      }
-    };
-    checkUser();
-  }, [supabase]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  // 2. Fetch joined scenes with their last messages
-  useEffect(() => {
-    if (!currentUserId) return;
+  const handleSend = async () => {
+    if (!newMessage.trim() || !currentUserId) return;
+    const content = newMessage;
+    setNewMessage("");
+    await sendMessage(content, currentUserId);
+  };
 
-    const fetchInbox = async () => {
-      try {
-        // Get scenes where user is host
-        const { data: hostedScenes, error: hostError } = await supabase
-          .from('scenes')
-          .select('*, host:profiles!scenes_host_id_fkey(*), scene_participants(user_id)')
-          .eq('host_id', currentUserId)
-          .eq('is_active', true);
-          
-        // Get unique scene_ids from messages where user is sender
-        const { data: userMessages } = await supabase
-          .from('messages')
-          .select('scene_id')
-          .eq('sender_id', currentUserId);
-          
-        const interactedSceneIds = Array.from(new Set(userMessages?.map((m: any) => m.scene_id) || []));
-
-        let interactedScenesData: any[] = [];
-        if (interactedSceneIds.length > 0) {
-          const { data: interactedScenes } = await supabase
-            .from('scenes')
-            .select('*, host:profiles!scenes_host_id_fkey(*), scene_participants(user_id)')
-            .in('id', interactedSceneIds)
-            .neq('host_id', currentUserId)
-            .eq('is_active', true);
-            
-          if (interactedScenes) {
-            interactedScenesData = interactedScenes;
-          }
-        }
-
-        const rawScenes = [...(hostedScenes || []), ...interactedScenesData];
-          
-        if (rawScenes.length > 0) {
-          
-          // Concurrently fetch the latest message for each joined scene
-          const scenesWithLastMessage = await Promise.all(
-            rawScenes.map(async (scene: any) => {
-              const { data: lastMsg } = await supabase
-                .from('messages')
-                .select('content, created_at')
-                .eq('scene_id', scene.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-                
-              return {
-                ...scene,
-                lastMessage: lastMsg || null
-              };
-            })
-          );
-          
-          // Sort active hangouts by message timestamp or scene creation date (newest first)
-          scenesWithLastMessage.sort((a: any, b: any) => {
-            const timeA = a.lastMessage ? new Date(a.lastMessage.created_at).getTime() : new Date(a.created_at).getTime();
-            const timeB = b.lastMessage ? new Date(b.lastMessage.created_at).getTime() : new Date(b.created_at).getTime();
-            return timeB - timeA;
-          });
-          
-          setInbox(scenesWithLastMessage);
-        }
-      } catch (err) {
-        console.error("Error loading chat inbox:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInbox();
-
-    // Subscribe to new message inserts to dynamically update the preview
-    const channel = supabase
-      .channel('chat-inbox-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        () => {
-          fetchInbox();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'scene_participants' },
-        () => {
-          fetchInbox();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentUserId, supabase]);
-
-  const formatMessageTime = (timeString?: string) => {
-    if (!timeString) return "";
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !currentUserId) return;
+    
+    setIsUploadingImage(true);
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `global-${currentUserId}-${Date.now()}.${fileExt}`;
+    
     try {
-      const d = new Date(timeString);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return "";
+      const { error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+        
+      if (error) {
+        alert("Image upload failed.");
+        return;
+      }
+      
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      await sendMessage(`![image](${publicUrl})`, currentUserId);
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = "";
     }
+  };
+
+  const handleShareLocation = () => {
+    if (!currentUserId || !navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        await sendMessage(`![location](${latitude},${longitude})`, currentUserId);
+      },
+      (error) => {
+        alert("Unable to retrieve location: " + error.message);
+      }
+    );
   };
 
   return (
     <div className="flex-1 flex flex-col h-[100dvh] bg-bg-dark pt-12 pb-24 overflow-hidden relative">
       
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-[var(--color-neon-pink)] opacity-5 blur-[100px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-20 left-0 w-[200px] h-[200px] bg-[var(--color-neon-blue)] opacity-5 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-[var(--color-neon-blue)] opacity-5 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-20 left-0 w-[200px] h-[200px] bg-[var(--color-neon-pink)] opacity-5 blur-[100px] rounded-full pointer-events-none" />
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-white/5 shrink-0 z-10">
-        <h1 className="text-2xl font-bold">Chats</h1>
-        <p className="text-xs text-white/40 mt-1">Your active campus hangouts</p>
+      <div className="px-6 py-4 border-b border-white/5 shrink-0 z-10 flex items-center gap-3 bg-bg-dark/80 backdrop-blur-md">
+        <div className="w-12 h-12 rounded-full glassmorphism flex items-center justify-center bg-[var(--color-neon-blue)]/10 border border-[var(--color-neon-blue)]/30 shrink-0 shadow-[0_0_15px_rgba(0,240,255,0.2)]">
+          <Globe2 size={24} className="text-[var(--color-neon-blue)]" />
+        </div>
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold flex items-center gap-2">Campus Global Chat</h1>
+          <p className="text-xs text-[var(--color-neon-blue)] font-medium flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full animate-pulse bg-[var(--color-neon-blue)]" />
+            Everyone is here
+          </p>
+        </div>
       </div>
 
-      {/* Inbox List */}
-      <div className="flex-1 overflow-y-auto px-6 pt-4 pb-12 z-10 space-y-4">
-        {loading ? (
-          <div className="h-full flex items-center justify-center py-24">
-            <div className="w-8 h-8 rounded-full border-2 border-t-white border-white/10 animate-spin" />
-          </div>
-        ) : inbox.length > 0 ? (
-          <AnimatePresence>
-            {inbox.map((scene, idx) => {
-              const vibe = getVibeInfo(scene.vibe_tag);
-              const joined = scene.scene_participants?.length || 1;
-              const hasLastMsg = !!scene.lastMessage;
-              
+      {/* Chat Area */}
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-4 space-y-4 z-0 no-scrollbar">
+        <AnimatePresence>
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center opacity-30 py-24 select-none">
+              <span className="text-4xl mb-4">🌍</span>
+              <p className="text-sm font-medium">Welcome to the Global Chat</p>
+              <p className="text-xs max-w-[180px] mt-1">Say hi to everyone on campus!</p>
+            </div>
+          ) : (
+            messages.filter(msg => !msg.content.startsWith("![kick](")).map((msg) => {
+              const isMe = msg.sender_id === currentUserId;
+              const senderName = isMe ? "Me" : (msg.sender?.username ? `@${msg.sender.username}` : "student");
+              const msgTime = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+              if (msg.content.startsWith("![system](")) return null;
+
               return (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3, delay: idx * 0.05 }}
-                  key={scene.id}
-                  onClick={() => router.push(`/room/${scene.id}`)}
-                  className="w-full glassmorphism rounded-2xl p-4 border border-white/5 flex items-center gap-4 cursor-pointer hover:border-white/15 hover:bg-white/5 active:scale-[0.99] transition-all relative overflow-hidden"
+                  key={msg.id}
+                  className={cn(
+                    "flex flex-col w-full max-w-[85%]",
+                    isMe ? "ml-auto items-end" : "items-start"
+                  )}
                 >
-                  {/* Neon vibe glowing indicator */}
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
-                    style={{ 
-                      backgroundColor: `${vibe.color}15`, 
-                      border: `1px solid ${vibe.color}30`,
-                      boxShadow: `0 0 10px ${vibe.color}20` 
-                    }}
-                  >
-                    {vibe.icon}
-                  </div>
-
-                  {/* Room Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h3 className="font-bold text-sm text-white truncate pr-2">{scene.title}</h3>
-                      <span className="text-[10px] text-white/30 shrink-0">
-                        {formatMessageTime(scene.lastMessage?.created_at || scene.created_at)}
-                      </span>
+                  {!isMe && (
+                    <div className="flex items-center gap-1.5 mb-1 pl-1">
+                      <span className="text-xs font-bold text-white/60">{senderName}</span>
                     </div>
+                  )}
+                  
+                  <div className={cn(
+                    "px-4 py-2.5 rounded-2xl relative group",
+                    isMe 
+                      ? "bg-gradient-to-br from-[var(--color-neon-blue)] to-[#0090FF] text-white rounded-tr-sm shadow-[0_0_15px_rgba(0,240,255,0.2)]" 
+                      : "glassmorphism rounded-tl-sm border border-white/5",
+                    msg.content.startsWith("![image](") ? "p-1.5 bg-transparent border-none shadow-none" : ""
+                  )}>
+                    {msg.content.startsWith("![image](") ? (
+                      <img 
+                        src={msg.content.slice(9, -1)} 
+                        alt="Sent photo" 
+                        className="max-w-[220px] max-h-[300px] rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity border border-white/10 shadow-lg" 
+                        onClick={() => window.open(msg.content.slice(9, -1), '_blank')}
+                      />
+                    ) : msg.content.startsWith("![location](") ? (
+                      <a 
+                        href={`https://maps.google.com/?q=${msg.content.slice(12, -1)}`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-xl transition-colors border",
+                          isMe ? "bg-white/20 hover:bg-white/30 border-white/30" : "bg-black/20 hover:bg-black/30 border-white/10"
+                        )}
+                      >
+                         <MapPin size={20} className={isMe ? "text-white" : "text-[var(--color-neon-blue)]"} />
+                         <span className="text-sm font-bold">Live Location</span>
+                      </a>
+                    ) : (
+                      <p className="text-[15px] leading-snug break-words">{msg.content}</p>
+                    )}
                     
-                    <p className="text-xs text-white/50 truncate pr-6">
-                      {hasLastMsg ? scene.lastMessage.content : "No messages yet. Say hi!"}
-                    </p>
-
-                    <div className="flex gap-3 mt-2 text-[10px] text-white/40">
-                      <span className="flex items-center gap-1"><MapPin size={10} /> {scene.location}</span>
-                      <span className="flex items-center gap-1"><Users size={10} /> {joined} joined</span>
-                    </div>
+                    <span className={cn(
+                      "text-[10px] absolute -bottom-4 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap",
+                      isMe ? "right-1 text-white/50" : "left-1 text-white/40"
+                    )}>
+                      {msgTime}
+                    </span>
                   </div>
-
-                  <ChevronRight size={16} className="text-white/20 shrink-0" />
                 </motion.div>
               );
-            })}
-          </AnimatePresence>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center py-20 opacity-40">
-            <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4">
-              <MessageCircle size={24} className="text-white/40" />
-            </div>
-            <p className="text-sm font-semibold">No active chats</p>
-            <p className="text-xs max-w-[200px] mt-1">Join scene rooms from the home feed or search to start messaging.</p>
-            <Link href="/feed" className="mt-6">
-              <button className="px-5 py-2.5 rounded-xl border border-white/10 hover:border-white/20 font-bold text-xs bg-white/5 hover:bg-white/10 transition-all text-white">
-                Find Scenes
-              </button>
-            </Link>
+            })
+          )}
+        </AnimatePresence>
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div className="px-4 py-3 bg-bg-dark/90 backdrop-blur-xl border-t border-white/10 z-20">
+        <AnimatePresence>
+          {showReactions && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              className="absolute bottom-[70px] right-4 glassmorphism p-2 rounded-full border border-white/10 flex gap-2 shadow-2xl z-30"
+            >
+              {['🔥', '💀', '💯', '😂', '👀'].map(emoji => (
+                <button 
+                  key={emoji} 
+                  onClick={async () => {
+                    setShowReactions(false);
+                    if (currentUserId) {
+                      await sendMessage(emoji, currentUserId);
+                    }
+                  }}
+                  className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-xl hover:scale-125 transition-all"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="flex items-end gap-2">
+          <label className={cn(
+            "w-10 h-10 rounded-full glassmorphism flex-shrink-0 flex items-center justify-center transition-colors cursor-pointer relative",
+            isUploadingImage ? "opacity-50 pointer-events-none" : "hover:bg-white/10"
+          )}>
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploadingImage} />
+            {isUploadingImage ? (
+              <div className="w-5 h-5 rounded-full border-2 border-t-white border-white/20 animate-spin" />
+            ) : (
+              <ImageIcon size={20} className="text-white/70" />
+            )}
+          </label>
+          
+          <div className="flex-1 glassmorphism rounded-3xl border border-white/10 flex items-center pr-1.5 focus-within:border-white/30 transition-colors">
+            <input 
+              type="text" 
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Message the campus..."
+              className="flex-1 bg-transparent py-3 pl-4 text-[15px] focus:outline-none placeholder-white/40"
+            />
+            <button 
+              onClick={() => setShowReactions(!showReactions)}
+              className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors mr-1"
+            >
+              <Smile size={18} className={showReactions ? "text-[var(--color-neon-pink)]" : "text-white/50"} />
+            </button>
           </div>
-        )}
+
+          <motion.button 
+            whileTap={{ scale: 0.9 }}
+            onClick={handleSend}
+            disabled={!newMessage.trim()}
+            className={cn(
+              "w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300",
+              newMessage.trim() 
+                ? "bg-[var(--color-neon-blue)] glow-blue cursor-pointer" 
+                : "glassmorphism opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Send size={18} className={newMessage.trim() ? "text-black translate-x-[-1px] translate-y-[1px]" : "text-white/50"} />
+          </motion.button>
+        </div>
       </div>
     </div>
   );
+}
+
+// Wrapper to provision the global scene
+export default function ChatPage() {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [globalSceneId, setGlobalSceneId] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUserId(user.id);
+
+      // 1. Check if "Global Campus Chat" exists
+      const { data: existingScene } = await supabase
+        .from("scenes")
+        .select("id")
+        .eq("title", "Global Campus Chat")
+        .maybeSingle();
+
+      if (existingScene) {
+        setGlobalSceneId(existingScene.id);
+      } else {
+        // 2. If it doesn't exist, create it!
+        const { data: newScene, error } = await supabase
+          .from("scenes")
+          .insert([{
+            host_id: user.id,
+            title: "Global Campus Chat",
+            vibe_tag: "chill",
+            location: "Everywhere",
+            is_active: true,
+            start_time: new Date().toISOString()
+          }] as any)
+          .select()
+          .single();
+
+        if (newScene) {
+          setGlobalSceneId(newScene.id);
+        }
+      }
+    };
+    init();
+  }, [supabase]);
+
+  if (!globalSceneId || !currentUserId) {
+    return (
+      <div className="flex-1 flex flex-col h-[100dvh] bg-bg-dark items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-t-white border-white/10 animate-spin mb-4" />
+        <p className="text-white/50 text-sm font-medium animate-pulse">Connecting to Global Chat...</p>
+      </div>
+    );
+  }
+
+  return <GlobalChatRoom sceneId={globalSceneId} currentUserId={currentUserId} />;
 }
