@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, Shield, Trophy, MapPin, Zap, Flame, Clock, Share2 } from "lucide-react";
+import { Settings, LogOut, Share2, Shield, Zap, Info, ChevronRight, MapPin, Camera, Ghost } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -171,6 +171,37 @@ export default function ProfilePage() {
           <Shield size={14} className="text-[var(--color-neon-purple)]" /> 
           {profile.year || "N/A"} • {profile.branch || "N/A"}
         </p>
+
+        {profile.bio && (
+          <p className="mt-4 text-center text-[15px] leading-relaxed text-white/90 max-w-[85%]">
+            {profile.bio}
+          </p>
+        )}
+
+        {(profile.instagram || profile.snapchat) && (
+          <div className="flex items-center gap-3 mt-5">
+            {profile.instagram && (
+              <a 
+                href={`https://instagram.com/${profile.instagram}`} 
+                target="_blank" 
+                rel="noreferrer"
+                className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center text-[var(--color-neon-pink)] hover:bg-[var(--color-neon-pink)]/20 transition-colors border border-[var(--color-neon-pink)]/30"
+              >
+                <Camera size={18} />
+              </a>
+            )}
+            {profile.snapchat && (
+              <a 
+                href={`https://snapchat.com/add/${profile.snapchat}`} 
+                target="_blank" 
+                rel="noreferrer"
+                className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center text-yellow-400 hover:bg-yellow-400/20 transition-colors border border-yellow-400/30"
+              >
+                <Ghost size={18} />
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Quick Stats */}
         <div className="flex w-full justify-between items-center glassmorphism rounded-2xl p-4 mt-8 border border-white/5">

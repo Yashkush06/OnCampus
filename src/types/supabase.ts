@@ -20,6 +20,9 @@ export interface Database {
           branch: string | null
           badges: string[] | null
           is_free: boolean | null
+          bio: string | null
+          instagram: string | null
+          snapchat: string | null
           created_at: string
         }
         Insert: {
@@ -32,6 +35,9 @@ export interface Database {
           branch?: string | null
           badges?: string[] | null
           is_free?: boolean | null
+          bio?: string | null
+          instagram?: string | null
+          snapchat?: string | null
           created_at?: string
         }
         Update: {
@@ -44,6 +50,9 @@ export interface Database {
           branch?: string | null
           badges?: string[] | null
           is_free?: boolean | null
+          bio?: string | null
+          instagram?: string | null
+          snapchat?: string | null
           created_at?: string
         }
       }

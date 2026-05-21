@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Image as ImageIcon, MapPin, Smile, Globe2 } from "lucide-react";
+import { Send, Image as ImageIcon, MapPin, Smile, Globe2, Mic, Square } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useChat } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,14 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
   const [newMessage, setNewMessage] = useState("");
   const [showReactions, setShowReactions] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
   const router = useRouter();
@@ -55,6 +63,75 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
     } finally {
       setIsUploadingImage(false);
       e.target.value = "";
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        await uploadVoiceNote(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      alert("Microphone access denied or error occurred.");
+      console.error(err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      audioChunksRef.current = []; // Clear chunks so upload isn't triggered or is empty
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    }
+  };
+
+  const uploadVoiceNote = async (audioBlob: Blob) => {
+    if (audioBlob.size === 0) return;
+    setIsUploadingAudio(true);
+    const fileName = `voice-global-${currentUserId}-${Date.now()}.webm`;
+    
+    try {
+      const { error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, audioBlob, { contentType: 'audio/webm', upsert: true });
+        
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      await sendMessage(`![audio](${publicUrl})`, currentUserId);
+    } catch (err: any) {
+      alert("Voice note upload failed: " + err.message);
+    } finally {
+      setIsUploadingAudio(false);
     }
   };
 
@@ -169,8 +246,12 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
                          <MapPin size={20} className={isMe ? "text-white" : "text-[var(--color-neon-blue)]"} />
                          <span className="text-sm font-bold">Live Location</span>
                       </a>
+                    ) : msg.content.startsWith("![audio](") ? (
+                      <div className="flex flex-col gap-1 w-[200px] sm:w-[250px]">
+                        <audio controls className="w-full h-10 rounded-full" src={msg.content.slice(9, -1)} />
+                      </div>
                     ) : (
-                      <p className="text-[15px] leading-snug break-words">{msg.content}</p>
+                      <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
                     )}
                     
                     <span className={cn(
@@ -230,27 +311,61 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
             )}
           </label>
           
+          <button 
+            onClick={isRecording ? stopRecording : startRecording}
+            className={cn(
+              "w-10 h-10 rounded-full glassmorphism flex-shrink-0 flex items-center justify-center transition-all",
+              isRecording ? "bg-red-500/20 text-red-500 glow-pink" : "hover:bg-white/10 text-white/70",
+              isUploadingAudio ? "opacity-50 pointer-events-none" : ""
+            )}
+            disabled={isUploadingAudio}
+          >
+            {isUploadingAudio ? (
+              <div className="w-5 h-5 rounded-full border-2 border-t-white border-white/20 animate-spin" />
+            ) : isRecording ? (
+              <Square size={16} fill="currentColor" className="animate-pulse" />
+            ) : (
+              <Mic size={18} />
+            )}
+          </button>
+
           <div className="flex-1 min-w-0 glassmorphism rounded-3xl border border-white/10 flex items-center pr-1.5 focus-within:border-white/30 transition-colors">
-            <input 
-              type="text" 
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Message the campus..."
-              className="flex-1 min-w-0 bg-transparent py-3 pl-4 text-[15px] focus:outline-none placeholder-white/40"
-            />
-            <button 
-              onClick={() => setShowReactions(!showReactions)}
-              className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors mr-1"
-            >
-              <Smile size={18} className={showReactions ? "text-[var(--color-neon-pink)]" : "text-white/50"} />
-            </button>
+            {isRecording ? (
+              <div className="flex-1 bg-transparent py-3 pl-4 text-[15px] text-red-400 font-medium flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                Recording... {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+              </div>
+            ) : (
+              <input 
+                type="text" 
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="Message the campus..."
+                className="flex-1 min-w-0 bg-transparent py-3 pl-4 text-[15px] focus:outline-none placeholder-white/40"
+              />
+            )}
+            {isRecording ? (
+              <button 
+                onClick={cancelRecording}
+                className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors mr-1 text-white/50 hover:text-white"
+              >
+                Cancel
+              </button>
+            ) : (
+              <button 
+                onClick={() => setShowReactions(!showReactions)}
+                className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors mr-1"
+              >
+                <Smile size={18} className={showReactions ? "text-[var(--color-neon-pink)]" : "text-white/50"} />
+              </button>
+            )}
           </div>
 
           <motion.button 
             whileTap={{ scale: 0.9 }}
             onClick={handleSend}
-            disabled={!newMessage.trim()}
+            disabled={(!newMessage.trim() && !isRecording) || isRecording}
             className={cn(
               "w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300",
               newMessage.trim() 

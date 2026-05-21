@@ -24,6 +24,9 @@ export default function EditProfilePage() {
     university_id: "",
     year: "",
     branch: "",
+    bio: "",
+    instagram: "",
+    snapchat: "",
   });
 
   useEffect(() => {
@@ -46,6 +49,9 @@ export default function EditProfilePage() {
             university_id: pData.university_id || "",
             year: pData.year || "",
             branch: pData.branch || "",
+            bio: pData.bio || "",
+            instagram: pData.instagram || "",
+            snapchat: pData.snapchat || "",
           });
         }
       }
@@ -225,6 +231,42 @@ export default function EditProfilePage() {
                 className="w-full glassmorphism rounded-xl px-4 py-3 border border-white/5 focus:border-[var(--color-neon-purple)] focus:outline-none transition-colors text-white"
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white/50 pl-1">Bio</label>
+            <textarea 
+              name="bio"
+              value={formData.bio}
+              onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+              placeholder="A little bit about yourself..."
+              rows={3}
+              className="w-full glassmorphism rounded-xl px-4 py-3 border border-white/5 focus:border-[var(--color-neon-blue)] focus:outline-none transition-colors text-white resize-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white/50 pl-1">Instagram Username</label>
+            <input 
+              type="text" 
+              name="instagram"
+              value={formData.instagram}
+              onChange={handleChange}
+              placeholder="e.g. yashkush06"
+              className="w-full glassmorphism rounded-xl px-4 py-3 border border-white/5 focus:border-[var(--color-neon-pink)] focus:outline-none transition-colors text-white"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white/50 pl-1">Snapchat Username</label>
+            <input 
+              type="text" 
+              name="snapchat"
+              value={formData.snapchat}
+              onChange={handleChange}
+              placeholder="e.g. yashkush06"
+              className="w-full glassmorphism rounded-xl px-4 py-3 border border-white/5 focus:border-yellow-400 focus:outline-none transition-colors text-white"
+            />
           </div>
         </div>
 
