@@ -96,9 +96,6 @@ export function useScenes(category?: string, currentUserId?: string) {
   }, [category, supabase]);
 
   const filteredScenes = scenes.filter((scene) => {
-    // NEVER hide the user's own scenes from them, no matter what
-    if (currentUserId && scene.host_id === currentUserId) return true;
-
     const participants = scene.scene_participants?.length || 0;
     if (participants > 0) return true;
     
