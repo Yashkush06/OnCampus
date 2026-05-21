@@ -6,6 +6,7 @@ import { Send, Image as ImageIcon, MapPin, Smile, Globe2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useChat } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 // This is the actual Chat Room UI
 function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUserId: string }) {
@@ -14,6 +15,7 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
+  const router = useRouter();
 
   const { messages, sendMessage } = useChat(sceneId);
 
@@ -122,7 +124,10 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
                   )}
                 >
                   {!isMe && (
-                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 mb-4 border border-white/10">
+                    <div 
+                      onClick={() => router.push(`/user/${msg.sender_id}`)}
+                      className="w-8 h-8 rounded-full overflow-hidden shrink-0 mb-4 border border-white/10 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
                       <img src={msg.sender?.avatar_url || "https://i.pravatar.cc/150?img=68"} alt={senderName} className="w-full h-full object-cover" />
                     </div>
                   )}

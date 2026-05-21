@@ -399,7 +399,10 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
                   )}
                 >
                   {!isMe && (
-                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 mb-4 border border-white/10">
+                    <div 
+                      onClick={() => router.push(`/user/${msg.sender_id}`)}
+                      className="w-8 h-8 rounded-full overflow-hidden shrink-0 mb-4 border border-white/10 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
                       <img src={msg.sender?.avatar_url || "https://i.pravatar.cc/150?img=68"} alt={senderName} className="w-full h-full object-cover" />
                     </div>
                   )}
