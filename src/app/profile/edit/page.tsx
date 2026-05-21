@@ -94,6 +94,9 @@ export default function EditProfilePage() {
         university_id: formData.university_id,
         year: formData.year,
         branch: formData.branch,
+        bio: formData.bio,
+        instagram: formData.instagram,
+        snapchat: formData.snapchat,
         avatar_url: finalAvatarUrl,
       })
       .eq("id", userId);
