@@ -78,10 +78,12 @@ export default function FeedPage() {
               <Search size={20} className="text-white" />
             </button>
           </Link>
-          <button className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center relative">
-            <Bell size={20} className="text-white" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[var(--color-neon-pink)] animate-pulse shadow-[0_0_8px_var(--color-neon-pink)]" />
-          </button>
+          <Link href="/friends?tab=requests">
+            <button className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center relative hover:bg-white/10 transition-colors">
+              <Bell size={20} className="text-white" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[var(--color-neon-pink)] animate-pulse shadow-[0_0_8px_var(--color-neon-pink)]" />
+            </button>
+          </Link>
         </div>
       </div>
 

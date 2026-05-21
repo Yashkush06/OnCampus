@@ -5,11 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, UserPlus, Check, X, Users, Zap, Hand, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 
-export default function FriendsPage() {
-  const [activeTab, setActiveTab] = useState<"friends" | "requests">("friends");
+function FriendsContent() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "requests" ? "requests" : "friends";
+  const [activeTab, setActiveTab] = useState<"friends" | "requests">(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [friends, setFriends] = useState<any[]>([]);
@@ -324,5 +327,17 @@ export default function FriendsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function FriendsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex items-center justify-center h-[100dvh] bg-bg-dark">
+        <div className="w-8 h-8 rounded-full border-2 border-t-white border-white/10 animate-spin" />
+      </div>
+    }>
+      <FriendsContent />
+    </Suspense>
   );
 }
