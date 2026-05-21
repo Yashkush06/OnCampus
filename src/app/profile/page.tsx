@@ -6,9 +6,11 @@ import { Settings, LogOut, Share2, Shield, Zap, Info, ChevronRight, MapPin, Came
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
   const supabase = createClient();
+  const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isFree, setIsFree] = useState(false);
@@ -99,6 +101,15 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      alert("Error signing out: " + error.message);
+    } else {
+      router.push("/login");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-bg-dark h-[100dvh]">
@@ -142,6 +153,9 @@ export default function ProfilePage() {
               <Settings size={20} className="text-white" />
             </button>
           </Link>
+          <button onClick={handleSignOut} className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center hover:bg-red-500/20 transition-colors">
+            <LogOut size={20} className="text-red-400" />
+          </button>
         </div>
       </div>
 
