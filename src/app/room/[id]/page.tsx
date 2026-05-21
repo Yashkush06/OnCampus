@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, MoreVertical, Send, Image as ImageIcon, MapPin, Smile, Share2, Navigation } from "lucide-react";
+import { ChevronLeft, Send, Image as ImageIcon, MapPin, Smile, Share2, Navigation, Users, UserPlus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
   const [newMessage, setNewMessage] = useState("");
   const [showReactions, setShowReactions] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage } = useChat(id);
@@ -51,7 +52,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       try {
         const { data, error } = await supabase
           .from("scenes")
-          .select("*, host:profiles!host_id(*), scene_participants(user_id)")
+          .select("*, host:profiles!host_id(*), scene_participants(user_id, profiles(username, avatar_url))")
           .eq("id", id)
           .single();
           
@@ -94,6 +95,8 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
               scene_participants: [...(prev.scene_participants || []), { user_id: currentUserId }]
             };
           });
+          // Broadcast that we joined!
+          await sendMessage("![system](joined)", currentUserId);
         }
       }
     };
@@ -110,6 +113,16 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       }
     };
   }, [currentUserId, scene?.id, id, supabase]);
+
+  // Handle kicking
+  useEffect(() => {
+    if (!currentUserId || messages.length === 0) return;
+    const kickMessage = messages.find(m => m.content === `![kick](${currentUserId})`);
+    if (kickMessage) {
+      alert("You have been kicked from the room by the host.");
+      router.push("/feed");
+    }
+  }, [messages, currentUserId, router]);
 
   // 4. Scroll to bottom of chat when new messages arrive
   useEffect(() => {
@@ -189,6 +202,40 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
     }
   };
 
+  const handleKickUser = async (userIdToKick: string) => {
+    if (!currentUserId || currentUserId !== scene?.host_id) return;
+    
+    const confirmKick = window.confirm("Are you sure you want to kick this user?");
+    if (!confirmKick) return;
+    
+    // 1. Remove them from participants
+    await supabase.from("scene_participants")
+      .delete()
+      .match({ scene_id: id, user_id: userIdToKick });
+      
+    // 2. Broadcast the hidden kick command
+    await sendMessage(`![kick](${userIdToKick})`, currentUserId);
+    
+    // 3. Close the drawer
+    setShowParticipants(false);
+  };
+
+  const handleAddFriend = async (userIdToAdd: string) => {
+    if (!currentUserId) return;
+    
+    const { error } = await supabase.from("friendships").insert([{
+      user_id1: currentUserId,
+      user_id2: userIdToAdd,
+      status: "pending"
+    }] as any);
+    
+    if (error) {
+      alert("Failed to send friend request: " + error.message);
+    } else {
+      alert("Friend request sent!");
+    }
+  };
+
   const activeColor = scene 
     ? VIBE_COLORS[scene.vibe_tag.toLowerCase()] || "var(--color-neon-blue)" 
     : "var(--color-neon-blue)";
@@ -256,8 +303,8 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
           <button onClick={handleShareScene} className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
             <Share2 size={18} className="text-white" />
           </button>
-          <button className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
-            <MoreVertical size={20} className="text-white" />
+          <button onClick={() => setShowParticipants(true)} className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors relative">
+            <Users size={20} className="text-white" />
           </button>
         </div>
       </div>
@@ -279,13 +326,23 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
               <p className="text-xs max-w-[180px] mt-1">Start the conversation and break the ice!</p>
             </div>
           ) : (
-            messages.map((msg) => {
+            messages.filter(msg => !msg.content.startsWith("![kick](")).map((msg) => {
               const isMe = msg.sender_id === currentUserId;
               const isHost = msg.sender_id === scene.host_id;
               const senderName = isMe ? "Me" : (msg.sender?.username ? `@${msg.sender.username}` : "student");
               
               // Format time to HH:MM
               const msgTime = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+              if (msg.content.startsWith("![system](")) {
+                return (
+                  <div key={msg.id} className="w-full flex justify-center my-2">
+                    <span className="bg-white/10 text-white/50 text-[10px] uppercase font-bold px-3 py-1 rounded-full border border-white/5 shadow-sm">
+                      {msg.content === "![system](joined)" ? `${senderName} joined the room` : "System message"}
+                    </span>
+                  </div>
+                );
+              }
 
               return (
                 <motion.div
@@ -441,6 +498,97 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
           </motion.button>
         </div>
       </div>
+
+      {/* Participants Drawer */}
+      <AnimatePresence>
+        {showParticipants && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowParticipants(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm z-40"
+            />
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="absolute bottom-0 left-0 w-full h-[70vh] bg-bg-dark border-t border-white/10 z-50 rounded-t-3xl flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+            >
+              <div className="w-full flex justify-center pt-3 pb-2">
+                <div className="w-12 h-1.5 rounded-full bg-white/20" />
+              </div>
+              
+              <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center shrink-0">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Users size={20} className="text-[var(--color-neon-blue)]" /> 
+                  In this Room
+                </h2>
+                <span className="bg-white/10 px-2.5 py-1 rounded-md text-xs font-bold text-white/70">
+                  {scene.scene_participants?.length || 0}
+                </span>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 no-scrollbar">
+                {scene.scene_participants?.map((p: any) => {
+                  const isParticipantHost = p.user_id === scene.host_id;
+                  const isParticipantMe = p.user_id === currentUserId;
+                  const imHost = currentUserId === scene.host_id;
+                  const profile = p.profiles || {};
+
+                  return (
+                    <div key={p.user_id} className="flex items-center justify-between p-3 glassmorphism rounded-2xl border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-10 h-10 rounded-full border overflow-hidden shrink-0",
+                          isParticipantHost ? "border-[var(--color-neon-pink)] glow-pink" : "border-white/20"
+                        )}>
+                          <img src={profile.avatar_url || `https://i.pravatar.cc/150?u=${p.user_id}`} alt="avatar" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm flex items-center gap-2">
+                            {isParticipantMe ? "You" : (profile.username ? `@${profile.username}` : "Participant")}
+                            {isParticipantHost && (
+                              <span className="text-[9px] uppercase tracking-wider bg-[var(--color-neon-pink)]/20 text-[var(--color-neon-pink)] px-1.5 py-0.5 rounded-md">Host</span>
+                            )}
+                          </span>
+                          <span className="text-xs text-white/50 font-mono text-ellipsis overflow-hidden max-w-[120px]">
+                            {p.user_id.substring(0, 8)}...
+                          </span>
+                        </div>
+                      </div>
+
+                      {!isParticipantMe && (
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleAddFriend(p.user_id)}
+                            className="w-8 h-8 rounded-full glassmorphism border border-white/10 flex items-center justify-center hover:bg-[var(--color-neon-blue)]/20 hover:text-[var(--color-neon-blue)] hover:border-[var(--color-neon-blue)]/50 transition-colors"
+                            title="Add Friend"
+                          >
+                            <UserPlus size={14} />
+                          </button>
+                          
+                          {imHost && !isParticipantHost && (
+                            <button 
+                              onClick={() => handleKickUser(p.user_id)}
+                              className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"
+                              title="Kick from Room"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
