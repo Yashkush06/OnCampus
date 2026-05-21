@@ -20,7 +20,7 @@ export default function LandingPage() {
           className="absolute top-8 left-6"
         >
           <div className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <div className="w-10 h-10 bg-white/95 p-1 rounded-md overflow-hidden relative shadow-[0_0_15px_rgba(0,255,255,0.3)]">
+            <div className="w-10 h-10 rounded-md overflow-hidden relative shadow-[0_0_15px_rgba(0,255,255,0.3)]">
               <img src="/logo.png" alt="OnCampus Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-gradient">OnCampus</span>
