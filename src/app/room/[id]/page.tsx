@@ -394,27 +394,37 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
                   animate={{ opacity: 1, y: 0 }}
                   key={msg.id}
                   className={cn(
-                    "flex flex-col w-full max-w-[85%]",
-                    isMe ? "ml-auto items-end" : "items-start"
+                    "flex w-full gap-2 items-end",
+                    isMe ? "justify-end" : "justify-start"
                   )}
                 >
                   {!isMe && (
-                    <div className="flex items-center gap-1.5 mb-1 pl-1">
-                      <span className={cn(
-                        "text-xs font-bold",
-                        isHost ? "text-[var(--color-neon-pink)]" : "text-white/60"
-                      )}>
-                        {senderName}
-                      </span>
-                      {isHost && (
-                        <span className="text-[9px] uppercase tracking-wider bg-[var(--color-neon-pink)]/20 text-[var(--color-neon-pink)] px-1.5 rounded-sm">
-                          Host
-                        </span>
-                      )}
+                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 mb-4 border border-white/10">
+                      <img src={msg.sender?.avatar_url || "https://i.pravatar.cc/150?img=68"} alt={senderName} className="w-full h-full object-cover" />
                     </div>
                   )}
                   
                   <div className={cn(
+                    "flex flex-col max-w-[75%]",
+                    isMe ? "items-end" : "items-start"
+                  )}>
+                    {!isMe && (
+                      <div className="flex items-center gap-1.5 mb-1 pl-1">
+                        <span className={cn(
+                          "text-xs font-bold",
+                          isHost ? "text-[var(--color-neon-pink)]" : "text-white/60"
+                        )}>
+                          {senderName}
+                        </span>
+                        {isHost && (
+                          <span className="text-[9px] uppercase tracking-wider bg-[var(--color-neon-pink)]/20 text-[var(--color-neon-pink)] px-1.5 rounded-sm">
+                            Host
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className={cn(
                     "px-4 py-2.5 rounded-2xl relative group",
                     isMe 
                       ? "bg-gradient-to-br from-[var(--color-neon-blue)] to-[#0090FF] text-white rounded-tr-sm shadow-[0_0_15px_rgba(0,240,255,0.2)]" 
