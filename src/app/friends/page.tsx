@@ -111,7 +111,8 @@ export default function FriendsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     
-    const { data: myProfile } = await supabase.from('profiles').select('full_name, username').eq('id', user.id).single();
+    const { data: myProfileData } = await supabase.from('profiles').select('full_name, username').eq('id', user.id).single();
+    const myProfile = myProfileData as any;
     const myName = myProfile?.full_name || myProfile?.username || "Someone";
 
     supabase.channel('global-notifications').send({
