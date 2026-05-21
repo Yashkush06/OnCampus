@@ -55,7 +55,7 @@ export default function LoginPage() {
           <img src="/logo.png" alt="OnCampus Logo" className="w-full h-auto object-contain" />
         </div>
 
-        <h1 className="text-3xl font-bold mb-2">Welcome to OnCampus</h1>
+        <h1 className="text-3xl font-bold mb-2 text-center">Welcome to OnCampus</h1>
         <p className="text-white/60 mb-10 text-center">Log in to join the scene.</p>
 
         {message?.type === 'success' ? (
