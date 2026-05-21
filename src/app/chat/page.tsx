@@ -270,7 +270,7 @@ export default function ChatPage() {
         .maybeSingle();
 
       if (existingScene) {
-        setGlobalSceneId(existingScene.id);
+        setGlobalSceneId((existingScene as any).id);
       } else {
         // 2. If it doesn't exist, create it!
         const { data: newScene, error } = await supabase
@@ -287,7 +287,7 @@ export default function ChatPage() {
           .single();
 
         if (newScene) {
-          setGlobalSceneId(newScene.id);
+          setGlobalSceneId((newScene as any).id);
         }
       }
     };
