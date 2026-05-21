@@ -55,7 +55,7 @@ export default function FriendsPage() {
 
         if (activeScenes && activeScenes.length > 0) {
           activeFriends.forEach(f => {
-            const hostScene = activeScenes.find(s => s.host_id === f.friendProfile.id);
+            const hostScene = activeScenes.find((s: any) => s.host_id === f.friendProfile.id);
             if (hostScene) {
               f.activeScene = hostScene;
             }
