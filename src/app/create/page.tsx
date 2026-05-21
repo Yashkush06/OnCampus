@@ -41,7 +41,22 @@ export default function CreateScenePage() {
       // 1. Get or create a session
       let { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) throw new Error("No user session available");
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      // 2. Verify profile exists
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+        
+      if (!profile) {
+        router.push("/onboarding");
+        return;
+      }
 
       // 3. Calculate dynamic start time based on selection offset
       const start = new Date();
