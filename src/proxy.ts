@@ -6,9 +6,12 @@ export async function proxy(request: NextRequest) {
     request,
   })
 
-  // Provide fallback keys to prevent crashes during local UI testing without env vars
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co'
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return supabaseResponse
+  }
 
   const supabase = createServerClient(
     supabaseUrl,
@@ -35,17 +38,24 @@ export async function proxy(request: NextRequest) {
 
   const isPublicRoute = 
     request.nextUrl.pathname === '/' || 
-    request.nextUrl.pathname === '/login' || 
-    request.nextUrl.pathname === '/onboarding';
+    request.nextUrl.pathname === '/login';
 
-  // Protect internal routes
-  if (!user && !isPublicRoute) {
+  const isOnboarding = request.nextUrl.pathname === '/onboarding';
+  const isAuthCallback = request.nextUrl.pathname.startsWith('/api/auth');
+
+  // Allow auth callbacks through
+  if (isAuthCallback) {
+    return supabaseResponse
+  }
+
+  // Protect internal routes — redirect unauthenticated users to login
+  if (!user && !isPublicRoute && !isOnboarding) {
     const url = request.nextUrl.clone()
-    url.pathname = '/onboarding'
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from public onboarding routes
+  // Redirect authenticated users away from landing/login to feed
   if (user && isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/feed'
@@ -57,7 +67,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Skip next.js internals and static files
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useChat } from "@/hooks/useChat";
+import { useToast } from "@/components/ui/ToastContext";
 
 const VIBE_COLORS: Record<string, string> = {
   chill: "var(--color-neon-blue)",
@@ -22,6 +23,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
   const { id } = use(params);
   const router = useRouter();
   const supabase = createClient();
+  const { showToast } = useToast();
   
   const [scene, setScene] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -129,7 +131,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       .on(
         'postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'scene_participants', filter: `scene_id=eq.${id}` }, 
-        async (payload) => {
+        async (payload: any) => {
           // Fetch the new participant's profile
           const { data: profile } = await supabase.from('profiles').select('username, avatar_url').eq('id', payload.new.user_id).single();
           
@@ -148,7 +150,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       .on(
         'postgres_changes', 
         { event: 'DELETE', schema: 'public', table: 'scene_participants', filter: `scene_id=eq.${id}` }, 
-        (payload) => {
+        (payload: any) => {
           setScene((prev: any) => {
             if (!prev) return prev;
             return {
@@ -170,7 +172,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
     if (!currentUserId || messages.length === 0) return;
     const kickMessage = messages.find(m => m.content === `![kick](${currentUserId})`);
     if (kickMessage) {
-      alert("You have been kicked from the room by the host.");
+      showToast("You have been kicked from the room by the host.", "error");
       router.push("/feed");
     }
   }, [messages, currentUserId, router]);
@@ -201,7 +203,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
         .upload(fileName, file, { upsert: true });
         
       if (error) {
-        alert("Image upload failed. Please check your storage policies.");
+        showToast("Image upload failed. Please check your storage policies.", "error");
         return;
       }
       
@@ -210,7 +212,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       // Send the image as a markdown string
       await sendMessage(`![image](${publicUrl})`, currentUserId);
     } catch (err: any) {
-      alert("Error: " + err.message);
+      showToast("Error: " + err.message, "error");
     } finally {
       setIsUploadingImage(false);
       e.target.value = "";
@@ -219,7 +221,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
 
   const handleShareLocation = () => {
     if (!currentUserId || !navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      showToast("Geolocation is not supported by your browser", "error");
       return;
     }
     
@@ -229,7 +231,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
         await sendMessage(`![location](${latitude},${longitude})`, currentUserId);
       },
       (error) => {
-        alert("Unable to retrieve your location: " + error.message);
+        showToast("Unable to retrieve your location: " + error.message, "error");
       }
     );
   };
@@ -249,7 +251,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       }
     } else {
       navigator.clipboard.writeText(url);
-      alert("Room link copied to clipboard!");
+      showToast("Room link copied to clipboard!", "success");
     }
   };
 
@@ -281,9 +283,9 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
     }] as any);
     
     if (error) {
-      alert("Failed to send friend request: " + error.message);
+      showToast("Failed to send friend request: " + error.message, "error");
     } else {
-      alert("Friend request sent!");
+      showToast("Friend request sent!", "success");
     }
   };
 
@@ -317,7 +319,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
         setRecordingDuration(prev => prev + 1);
       }, 1000);
     } catch (err) {
-      alert("Microphone access denied or error occurred.");
+      showToast("Microphone access denied or error occurred.", "error");
       console.error(err);
     }
   };
@@ -354,7 +356,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
       await sendMessage(`![audio](${publicUrl})`, currentUserId);
     } catch (err: any) {
-      alert("Voice note upload failed: " + err.message);
+      showToast("Voice note upload failed: " + err.message, "error");
     } finally {
       setIsUploadingAudio(false);
     }

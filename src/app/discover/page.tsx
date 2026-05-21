@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getVibeInfo } from "@/lib/constants";
 
 const VIBE_CATEGORIES = [
   { id: "all", label: "All Vibes", icon: "✨", color: "var(--color-neon-blue)" },
@@ -18,19 +19,7 @@ const VIBE_CATEGORIES = [
   { id: "party", label: "Party", icon: "🎉", color: "#FF0055" },
 ];
 
-const VIBE_METADATA: Record<string, { color: string; label: string; icon: string }> = {
-  chill: { color: "var(--color-neon-blue)", label: "Chill", icon: "🍃" },
-  study: { color: "var(--color-neon-purple)", label: "Study", icon: "📚" },
-  gaming: { color: "var(--color-neon-pink)", label: "Gaming", icon: "🎮" },
-  food: { color: "#FFB000", label: "Food", icon: "🍜" },
-  sports: { color: "#00FF47", label: "Sports", icon: "⚽" },
-  party: { color: "#FF0055", label: "Party", icon: "🎉" },
-};
 
-const getVibeInfo = (tag: string) => {
-  const normalized = tag.toLowerCase();
-  return VIBE_METADATA[normalized] || { color: "var(--color-neon-blue)", label: tag, icon: "✨" };
-};
 
 export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,7 +67,8 @@ export default function DiscoverPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedVibe, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVibe]);
 
   // Local filter for search queries
   const filteredScenes = scenes.filter((scene) => {

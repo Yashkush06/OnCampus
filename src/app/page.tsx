@@ -3,8 +3,21 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, MapPin, Zap } from "lucide-react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }: { data: any }) => {
+      if (data?.user) router.push('/feed');
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar bg-bg-dark relative">
       {/* Background elements */}

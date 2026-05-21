@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, MapPin, Users, Clock, Flame, Sparkles, Plus, Zap, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,57 +8,21 @@ import { useScenes } from "@/hooks/useScenes";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect } from "react";
-
-const categories = ["Nearby", "Chill", "Study", "Gaming", "Food", "Sports", "Party"];
-
-const VIBE_METADATA: Record<string, { color: string; label: string; icon: string }> = {
-  chill: { color: "var(--color-neon-blue)", label: "Chill", icon: "🍃" },
-  study: { color: "var(--color-neon-purple)", label: "Study", icon: "📚" },
-  gaming: { color: "var(--color-neon-pink)", label: "Gaming", icon: "🎮" },
-  food: { color: "#FFB000", label: "Food", icon: "🍜" },
-  sports: { color: "#00FF47", label: "Sports", icon: "⚽" },
-  party: { color: "#FF0055", label: "Party", icon: "🎉" },
-};
-
-const getVibeInfo = (tag: string) => {
-  const normalized = tag.toLowerCase();
-  return VIBE_METADATA[normalized] || { color: "var(--color-neon-blue)", label: tag, icon: "✨" };
-};
-
-const formatStartTime = (timeString: string) => {
-  try {
-    const d = new Date(timeString);
-    const now = new Date();
-    const diffMs = d.getTime() - now.getTime();
-    const diffMins = Math.round(diffMs / 60000);
-    
-    if (Math.abs(diffMins) < 5) return "Live Now";
-    if (diffMins > 0) {
-      if (diffMins < 60) return `In ${diffMins} mins`;
-      return `At ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    } else {
-      const absMins = Math.abs(diffMins);
-      if (absMins < 60) return `Started ${absMins}m ago`;
-      return `Started at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-  } catch (e) {
-    return "Active Now";
-  }
-};
+import { CATEGORIES, getVibeInfo, formatStartTime } from "@/lib/constants";
 
 export default function FeedPage() {
   const [activeCategory, setActiveCategory] = useState("Nearby");
   const [currentUserId, setCurrentUserId] = useState<string>();
-  const { scenes } = useScenes(activeCategory, currentUserId);
+  const { scenes, loading } = useScenes(activeCategory, currentUserId);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }: { data: any }) => {
       if (data?.user) setCurrentUserId(data.user.id);
     });
-  }, [supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col h-[100dvh] bg-bg-dark pt-12 pb-24 overflow-hidden relative">
@@ -78,7 +42,6 @@ export default function FeedPage() {
           <Link href="/friends?tab=requests">
             <button className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center relative hover:bg-white/10 transition-colors">
               <Bell size={20} className="text-white" />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[var(--color-neon-pink)] animate-pulse shadow-[0_0_8px_var(--color-neon-pink)]" />
             </button>
           </Link>
         </div>
@@ -86,7 +49,7 @@ export default function FeedPage() {
 
       {/* Categories */}
       <div className="px-6 py-4 flex gap-3 overflow-x-auto no-scrollbar z-10 shrink-0">
-        {categories.map((cat) => (
+        {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
@@ -105,7 +68,31 @@ export default function FeedPage() {
       {/* Feed */}
       <div className="flex-1 overflow-y-auto px-6 pb-12 pt-2 z-10 space-y-6">
         <AnimatePresence mode="popLayout">
-          {scenes.length > 0 ? (
+          {loading ? (
+            // Loading Skeletons
+            <>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="w-full glassmorphism rounded-3xl p-5 border border-white/5 animate-pulse">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="h-4 w-20 bg-white/10 rounded mb-3" />
+                      <div className="h-6 w-48 bg-white/10 rounded mb-3" />
+                      <div className="h-4 w-32 bg-white/10 rounded" />
+                    </div>
+                    <div className="h-6 w-16 bg-white/10 rounded" />
+                  </div>
+                  <div className="space-y-2 mb-5">
+                    <div className="h-4 w-40 bg-white/10 rounded" />
+                    <div className="h-4 w-28 bg-white/10 rounded" />
+                  </div>
+                  <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                    <div className="h-6 w-20 bg-white/10 rounded" />
+                    <div className="h-10 w-28 bg-white/10 rounded-xl" />
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : scenes.length > 0 ? (
             scenes.map((scene, idx) => {
               const vibe = getVibeInfo(scene.vibe_tag);
               const joinedCount = scene.scene_participants?.length ?? 0;
@@ -217,15 +204,6 @@ export default function FeedPage() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {scenes.length > 0 && (
-          <div className="w-full flex justify-center py-6">
-            <p className="text-white/30 text-sm flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-white/30 animate-pulse" />
-              Looking for more scenes...
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

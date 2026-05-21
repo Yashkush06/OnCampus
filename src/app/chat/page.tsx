@@ -7,9 +7,11 @@ import { createClient } from "@/lib/supabase/client";
 import { useChat } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/ToastContext";
 
 // This is the actual Chat Room UI
 function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUserId: string }) {
+  const { showToast } = useToast();
   const [newMessage, setNewMessage] = useState("");
   const [showReactions, setShowReactions] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -52,14 +54,14 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
         .upload(fileName, file, { upsert: true });
         
       if (error) {
-        alert("Image upload failed.");
+        showToast("Image upload failed.", "error");
         return;
       }
       
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
       await sendMessage(`![image](${publicUrl})`, currentUserId);
     } catch (err: any) {
-      alert("Error: " + err.message);
+      showToast("Error: " + err.message, "error");
     } finally {
       setIsUploadingImage(false);
       e.target.value = "";
@@ -92,7 +94,7 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
         setRecordingDuration(prev => prev + 1);
       }, 1000);
     } catch (err) {
-      alert("Microphone access denied or error occurred.");
+      showToast("Microphone access denied or error occurred.", "error");
       console.error(err);
     }
   };
@@ -129,7 +131,7 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
       await sendMessage(`![audio](${publicUrl})`, currentUserId);
     } catch (err: any) {
-      alert("Voice note upload failed: " + err.message);
+      showToast("Voice note upload failed: " + err.message, "error");
     } finally {
       setIsUploadingAudio(false);
     }
@@ -137,7 +139,7 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
 
   const handleShareLocation = () => {
     if (!currentUserId || !navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      showToast("Geolocation is not supported by your browser", "error");
       return;
     }
     
@@ -147,7 +149,7 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
         await sendMessage(`![location](${latitude},${longitude})`, currentUserId);
       },
       (error) => {
-        alert("Unable to retrieve location: " + error.message);
+        showToast("Unable to retrieve location: " + error.message, "error");
       }
     );
   };

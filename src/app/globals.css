@@ -28,7 +28,6 @@
     /* Mobile optimization */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    touch-action: pan-x pan-y;
     overflow-x: hidden;
   }
 }
@@ -62,6 +61,10 @@
   
   .glow-purple {
     box-shadow: 0 0 15px rgba(178, 0, 255, 0.5);
+  }
+  
+  .glow-pink {
+    box-shadow: 0 0 15px rgba(255, 0, 228, 0.5);
   }
   
   .no-scrollbar::-webkit-scrollbar {

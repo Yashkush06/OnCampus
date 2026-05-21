@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, LogOut, Share2, Shield, Zap, Info, ChevronRight, MapPin, Camera, Ghost, Flame, Trophy, Clock } from "lucide-react";
+import { Settings, LogOut, Share2, Shield, Zap, Info, ChevronRight, MapPin, Camera, Ghost, Flame, Trophy, Clock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/ToastContext";
 
 export default function ProfilePage() {
   const supabase = createClient();
   const router = useRouter();
+  const { showToast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isFree, setIsFree] = useState(false);
@@ -60,7 +62,8 @@ export default function ProfilePage() {
     };
 
     loadProfile();
-  }, [supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleFreeMode = async () => {
     if (!profile) return;
@@ -77,7 +80,7 @@ export default function ProfilePage() {
     if (error) {
       // Revert on error
       setIsFree(!newStatus);
-      alert("Failed to update status.");
+      showToast("Failed to update status.", "error");
     }
     setUpdatingFree(false);
   };
@@ -97,14 +100,14 @@ export default function ProfilePage() {
       }
     } else {
       navigator.clipboard.writeText(url);
-      alert("Profile link copied to clipboard!");
+      showToast("Profile link copied!", "success");
     }
   };
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      alert("Error signing out: " + error.message);
+      showToast("Error signing out: " + error.message, "error");
     } else {
       router.push("/login");
     }
@@ -148,11 +151,9 @@ export default function ProfilePage() {
           <button onClick={handleShareProfile} className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center hover:bg-white/10 transition-colors">
             <Share2 size={20} className="text-white" />
           </button>
-          <Link href="/profile/edit">
-            <button className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center hover:bg-white/10 transition-colors">
+          <button className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center hover:bg-white/10 transition-colors opacity-50 cursor-not-allowed">
               <Settings size={20} className="text-white" />
-            </button>
-          </Link>
+          </button>
           <button onClick={handleSignOut} className="w-10 h-10 rounded-full glassmorphism flex items-center justify-center hover:bg-red-500/20 transition-colors">
             <LogOut size={20} className="text-red-400" />
           </button>
@@ -176,7 +177,7 @@ export default function ProfilePage() {
             "absolute bottom-0 right-0 text-black text-xs font-bold px-2 py-1 rounded-full border-2 border-bg-dark flex items-center gap-1 transition-colors",
             isFree ? "bg-[var(--color-neon-pink)] glow-pink" : "bg-[var(--color-neon-blue)] glow-blue"
           )}>
-            <Zap size={10} fill="black" /> {isFree ? "FREE" : "Level 12"}
+            <Zap size={10} fill="black" /> {isFree ? "FREE" : `${stats.scenes} scenes`}
           </div>
         </div>
 
@@ -258,45 +259,12 @@ export default function ProfilePage() {
             <Trophy size={18} className="text-[#FFB000]" /> 
             Campus Reputation
           </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="glassmorphism rounded-xl p-3 border border-white/5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#FFB000]/20 flex items-center justify-center">
-                ☕
+          <div className="w-full glassmorphism rounded-2xl p-6 border border-white/5 flex flex-col items-center text-center">
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                <Sparkles size={24} className="text-[var(--color-neon-purple)] opacity-60" />
               </div>
-              <div>
-                <p className="font-bold text-sm">Chai King</p>
-                <p className="text-[10px] text-white/40">Hosted 10 chai breaks</p>
-              </div>
+              <p className="text-sm text-white/50 max-w-[220px]">Complete more scenes to unlock badges like <span className="text-white/70 font-medium">Chai King</span>, <span className="text-white/70 font-medium">Study Demon</span>, and more!</p>
             </div>
-            <div className="glassmorphism rounded-xl p-3 border border-white/5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--color-neon-blue)]/20 flex items-center justify-center">
-                📚
-              </div>
-              <div>
-                <p className="font-bold text-sm">Study Demon</p>
-                <p className="text-[10px] text-white/40">50 hrs in library</p>
-              </div>
-            </div>
-            <div className="glassmorphism rounded-xl p-3 border border-white/5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--color-neon-pink)]/20 flex items-center justify-center">
-                🎮
-              </div>
-              <div>
-                <p className="font-bold text-sm">LAN Lord</p>
-                <p className="text-[10px] text-white/40">Won 5 Valorant stacks</p>
-              </div>
-            </div>
-            <div className="glassmorphism rounded-xl p-3 border border-[var(--color-neon-purple)]/30 flex items-center gap-3 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-neon-purple)]/10 to-transparent" />
-              <div className="w-10 h-10 rounded-full bg-[var(--color-neon-purple)]/20 flex items-center justify-center z-10">
-                🦉
-              </div>
-              <div className="z-10">
-                <p className="font-bold text-sm">Night Owl</p>
-                <p className="text-[10px] text-[var(--color-neon-purple)] font-medium">Equipped</p>
-              </div>
-            </div>
-          </div>
         </div>
 
       </div>

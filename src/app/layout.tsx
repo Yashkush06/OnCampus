@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/navigation/BottomNav";
+import { ToastProvider } from "@/components/ui/ToastContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,7 +21,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false,
+  userScalable: true,
 };
 
 export default function RootLayout({
@@ -33,7 +34,9 @@ export default function RootLayout({
       <body className={`${inter.className} bg-bg-dark text-white antialiased`}>
         {/* Mobile-first constraint for desktop viewing */}
         <div className="mx-auto max-w-md min-h-[100dvh] bg-bg-dark relative overflow-hidden flex flex-col shadow-2xl">
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
           <BottomNav />
           <script
             dangerouslySetInnerHTML={{

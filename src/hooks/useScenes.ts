@@ -16,6 +16,8 @@ export type SceneWithHost = Database['public']['Tables']['scenes']['Row'] & {
 
 export function useScenes(category?: string, currentUserId?: string) {
   const [scenes, setScenes] = useState<SceneWithHost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -30,10 +32,17 @@ export function useScenes(category?: string, currentUserId?: string) {
         query = query.eq('vibe_tag', category.toLowerCase());
       }
         
-      const { data, error } = await query;
-      if (data) setScenes(data as SceneWithHost[]);
+      const { data, error: fetchError } = await query;
+      if (fetchError) {
+        setError(fetchError.message);
+      } else if (data) {
+        setScenes(data as SceneWithHost[]);
+        setError(null);
+      }
+      setLoading(false);
     };
 
+    setLoading(true);
     fetchScenes();
 
     // Subscribe to live scene updates
@@ -42,7 +51,7 @@ export function useScenes(category?: string, currentUserId?: string) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'scenes' },
-        async (payload) => {
+        async (payload: any) => {
           if (payload.eventType === 'INSERT') {
             const newScene = payload.new as Database['public']['Tables']['scenes']['Row'];
             const { data: profile } = await supabase
@@ -54,7 +63,7 @@ export function useScenes(category?: string, currentUserId?: string) {
             const sceneWithHost: SceneWithHost = {
               ...newScene,
               host: profile,
-              scene_participants: [{ user_id: newScene.host_id }] // Host is implicitly a participant
+              scene_participants: [{ user_id: newScene.host_id }]
             };
             setScenes((prev) => [sceneWithHost, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
@@ -83,28 +92,26 @@ export function useScenes(category?: string, currentUserId?: string) {
       )
       .subscribe();
 
-    // Fallback: Poll every 10 seconds to catch any missed events from Next.js caching
-    // or if the user navigated away when the event fired
+    // Fallback polling every 30 seconds
     const intervalId = setInterval(() => {
       fetchScenes();
-    }, 10000);
+    }, 30000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(intervalId);
     };
-  }, [category, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
 
   const filteredScenes = scenes.filter((scene) => {
     const participants = scene.scene_participants?.length || 0;
     if (participants > 0) return true;
     
-    // Auto remove empty rooms after 5 minutes
-    // Ensure we parse the timestamp as UTC to prevent timezone bugs
     let createdStr = scene.created_at;
-    if (!createdStr) return true; // Safety check if realtime payload misses it
+    if (!createdStr) return true;
     
-    createdStr = createdStr.replace(' ', 'T'); // Fix for Safari/iOS
+    createdStr = createdStr.replace(' ', 'T');
     
     if (!createdStr.endsWith('Z') && !createdStr.includes('+')) {
       createdStr += 'Z';
@@ -112,16 +119,14 @@ export function useScenes(category?: string, currentUserId?: string) {
     
     const createdDate = new Date(createdStr);
     
-    // If parsing completely fails, keep the scene visible to be safe
     if (isNaN(createdDate.getTime())) return true;
     
     const ageMs = Date.now() - createdDate.getTime();
     
-    // If computer clock is behind the server clock, ageMs will be negative. Keep visible.
     if (ageMs < 0) return true;
     
     return ageMs < 5 * 60 * 1000;
   });
 
-  return { scenes: filteredScenes };
+  return { scenes: filteredScenes, loading, error };
 }

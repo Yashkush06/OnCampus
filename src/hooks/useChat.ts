@@ -12,19 +12,22 @@ export type MessageWithSender = Database['public']['Tables']['messages']['Row'] 
 
 export function useChat(sceneId: string) {
   const [messages, setMessages] = useState<MessageWithSender[]>([]);
+  const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
     const fetchMessages = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('messages')
         .select('*, sender:profiles(username, full_name, avatar_url)')
         .eq('scene_id', sceneId)
         .order('created_at', { ascending: true });
         
       if (data) setMessages(data as MessageWithSender[]);
+      setLoading(false);
     };
 
+    setLoading(true);
     fetchMessages();
 
     // Subscribe to real-time inserts
@@ -38,7 +41,7 @@ export function useChat(sceneId: string) {
           table: 'messages', 
           filter: `scene_id=eq.${sceneId}` 
         },
-        async (payload) => {
+        async (payload: any) => {
           const newMsg = payload.new as Database['public']['Tables']['messages']['Row'];
           const { data: profile } = await supabase
             .from('profiles')
@@ -50,7 +53,11 @@ export function useChat(sceneId: string) {
             ...newMsg,
             sender: profile
           };
-          setMessages((prev) => [...prev, msgWithSender]);
+          setMessages((prev) => {
+            // Deduplicate: check if message already exists
+            if (prev.some(m => m.id === msgWithSender.id)) return prev;
+            return [...prev, msgWithSender];
+          });
         }
       )
       .subscribe();
@@ -58,7 +65,8 @@ export function useChat(sceneId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sceneId, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneId]);
 
   const sendMessage = async (content: string, senderId: string) => {
     const { error } = await supabase
@@ -73,5 +81,5 @@ export function useChat(sceneId: string) {
     return { error };
   };
 
-  return { messages, sendMessage };
+  return { messages, sendMessage, loading };
 }

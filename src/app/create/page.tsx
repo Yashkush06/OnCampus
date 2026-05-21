@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/ToastContext";
 
 const vibeTags = [
   { id: "chill", label: "Chill", color: "var(--color-neon-blue)" },
@@ -30,6 +31,7 @@ export default function CreateScenePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const { showToast } = useToast();
 
   const activeColor = selectedVibe 
     ? vibeTags.find(v => v.id === selectedVibe)?.color 
@@ -94,7 +96,7 @@ export default function CreateScenePage() {
       router.push(`/room/${newScene.id}`);
     } catch (err: any) {
       console.error("Failed to host scene:", err);
-      alert("Failed to host scene: " + err.message);
+      showToast("Failed to host scene: " + err.message, "error");
     } finally {
       setIsSubmitting(false);
     }
