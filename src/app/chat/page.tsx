@@ -175,6 +175,7 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
                       {msgTime}
                     </span>
                   </div>
+                </div>
                 </motion.div>
               );
             })

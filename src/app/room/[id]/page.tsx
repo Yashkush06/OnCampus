@@ -462,6 +462,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
                       {msgTime}
                     </span>
                   </div>
+                </div>
                 </motion.div>
               );
             })
