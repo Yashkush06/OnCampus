@@ -8,6 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "OnCampus | Real-time Social Discovery",
   description: "Find your people instantly. Real-time college social discovery platform.",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -34,6 +35,15 @@ export default function RootLayout({
         <div className="mx-auto max-w-md min-h-[100dvh] bg-bg-dark relative overflow-hidden flex flex-col shadow-2xl">
           {children}
           <BottomNav />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.register('/sw.js');
+                }
+              `,
+            }}
+          />
         </div>
       </body>
     </html>
