@@ -49,13 +49,38 @@ export default function ChatInboxPage() {
 
     const fetchInbox = async () => {
       try {
-        const { data, error } = await supabase
-          .from('scene_participants')
-          .select('scene:scenes(*, host:profiles!scenes_host_id_fkey(*), scene_participants(user_id))')
-          .eq('user_id', currentUserId);
+        // Get scenes where user is host
+        const { data: hostedScenes, error: hostError } = await supabase
+          .from('scenes')
+          .select('*, host:profiles!scenes_host_id_fkey(*), scene_participants(user_id)')
+          .eq('host_id', currentUserId)
+          .eq('is_active', true);
           
-        if (data) {
-          const rawScenes = data.map((item: any) => item.scene).filter(Boolean);
+        // Get unique scene_ids from messages where user is sender
+        const { data: userMessages } = await supabase
+          .from('messages')
+          .select('scene_id')
+          .eq('sender_id', currentUserId);
+          
+        const interactedSceneIds = Array.from(new Set(userMessages?.map((m: any) => m.scene_id) || []));
+
+        let interactedScenesData: any[] = [];
+        if (interactedSceneIds.length > 0) {
+          const { data: interactedScenes } = await supabase
+            .from('scenes')
+            .select('*, host:profiles!scenes_host_id_fkey(*), scene_participants(user_id)')
+            .in('id', interactedSceneIds)
+            .neq('host_id', currentUserId)
+            .eq('is_active', true);
+            
+          if (interactedScenes) {
+            interactedScenesData = interactedScenes;
+          }
+        }
+
+        const rawScenes = [...(hostedScenes || []), ...interactedScenesData];
+          
+        if (rawScenes.length > 0) {
           
           // Concurrently fetch the latest message for each joined scene
           const scenesWithLastMessage = await Promise.all(
