@@ -475,7 +475,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* Interactive Input Area */}
-      <div className="px-4 py-3 pb-safe bg-bg-dark/90 backdrop-blur-xl border-t border-white/10 z-20">
+      <div className="px-4 pt-3 pb-8 md:pb-4 bg-bg-dark/90 backdrop-blur-xl border-t border-white/10 z-20">
         
         {/* Emoji Reactions Popover */}
         <AnimatePresence>

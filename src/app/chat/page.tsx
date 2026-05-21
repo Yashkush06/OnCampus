@@ -190,7 +190,7 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
       </div>
 
       {/* Input Area */}
-      <div className="px-4 py-3 bg-bg-dark/90 backdrop-blur-xl border-t border-white/10 z-20">
+      <div className="px-4 pt-3 pb-8 md:pb-4 bg-bg-dark/90 backdrop-blur-xl border-t border-white/10 z-20">
         <AnimatePresence>
           {showReactions && (
             <motion.div 
