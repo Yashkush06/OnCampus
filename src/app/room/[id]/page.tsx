@@ -114,6 +114,50 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
     };
   }, [currentUserId, scene?.id, id, supabase]);
 
+  // 3b. Subscribe to real-time participant changes
+  useEffect(() => {
+    if (!id) return;
+    
+    const channel = supabase.channel(`participants-${id}`)
+      .on(
+        'postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'scene_participants', filter: `scene_id=eq.${id}` }, 
+        async (payload) => {
+          // Fetch the new participant's profile
+          const { data: profile } = await supabase.from('profiles').select('username, avatar_url').eq('id', payload.new.user_id).single();
+          
+          setScene((prev: any) => {
+            if (!prev) return prev;
+            // Avoid duplicates if we already added them locally
+            if (prev.scene_participants?.some((p: any) => p.user_id === payload.new.user_id)) return prev;
+            
+            return {
+              ...prev,
+              scene_participants: [...(prev.scene_participants || []), { user_id: payload.new.user_id, profiles: profile }]
+            };
+          });
+        }
+      )
+      .on(
+        'postgres_changes', 
+        { event: 'DELETE', schema: 'public', table: 'scene_participants', filter: `scene_id=eq.${id}` }, 
+        (payload) => {
+          setScene((prev: any) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              scene_participants: prev.scene_participants?.filter((p: any) => p.user_id !== payload.old.user_id) || []
+            };
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, supabase]);
+
   // Handle kicking
   useEffect(() => {
     if (!currentUserId || messages.length === 0) return;
