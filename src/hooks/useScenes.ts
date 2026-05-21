@@ -83,8 +83,15 @@ export function useScenes(category?: string, currentUserId?: string) {
       )
       .subscribe();
 
+    // Fallback: Poll every 10 seconds to catch any missed events from Next.js caching
+    // or if the user navigated away when the event fired
+    const intervalId = setInterval(() => {
+      fetchScenes();
+    }, 10000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(intervalId);
     };
   }, [category, supabase]);
 
@@ -98,6 +105,8 @@ export function useScenes(category?: string, currentUserId?: string) {
     // Auto remove empty rooms after 5 minutes
     // Ensure we parse the timestamp as UTC to prevent timezone bugs
     let createdStr = scene.created_at;
+    if (!createdStr) return true; // Safety check if realtime payload misses it
+    
     createdStr = createdStr.replace(' ', 'T'); // Fix for Safari/iOS
     
     if (!createdStr.endsWith('Z') && !createdStr.includes('+')) {
