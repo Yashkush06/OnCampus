@@ -115,7 +115,7 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
   };
 
   const uploadVoiceNote = async (audioBlob: Blob) => {
-    if (audioBlob.size === 0) return;
+    if (audioBlob.size === 0 || !currentUserId) return;
     setIsUploadingAudio(true);
     const fileName = `voice-global-${currentUserId}-${Date.now()}.webm`;
     

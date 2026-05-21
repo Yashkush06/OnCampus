@@ -340,7 +340,7 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
   };
 
   const uploadVoiceNote = async (audioBlob: Blob) => {
-    if (audioBlob.size === 0) return;
+    if (audioBlob.size === 0 || !currentUserId) return;
     setIsUploadingAudio(true);
     const fileName = `voice-room-${currentUserId}-${Date.now()}.webm`;
     

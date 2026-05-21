@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, LogOut, Share2, Shield, Zap, Info, ChevronRight, MapPin, Camera, Ghost } from "lucide-react";
+import { Settings, LogOut, Share2, Shield, Zap, Info, ChevronRight, MapPin, Camera, Ghost, Flame, Trophy, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
