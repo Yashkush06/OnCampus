@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { useScenes } from "@/hooks/useScenes";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { useEffect } from "react";
 
 const categories = ["Nearby", "Chill", "Study", "Gaming", "Food", "Sports", "Party"];
 
@@ -47,8 +49,16 @@ const formatStartTime = (timeString: string) => {
 
 export default function FeedPage() {
   const [activeCategory, setActiveCategory] = useState("Nearby");
-  const { scenes } = useScenes(activeCategory);
+  const [currentUserId, setCurrentUserId] = useState<string>();
+  const { scenes } = useScenes(activeCategory, currentUserId);
   const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) setCurrentUserId(data.user.id);
+    });
+  }, [supabase]);
 
   return (
     <div className="flex-1 flex flex-col h-[100dvh] bg-bg-dark pt-12 pb-24 overflow-hidden relative">

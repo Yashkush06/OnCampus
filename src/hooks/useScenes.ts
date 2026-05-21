@@ -14,7 +14,7 @@ export type SceneWithHost = Database['public']['Tables']['scenes']['Row'] & {
   }[] | null;
 };
 
-export function useScenes(category?: string) {
+export function useScenes(category?: string, currentUserId?: string) {
   const [scenes, setScenes] = useState<SceneWithHost[]>([]);
   const supabase = createClient();
 
@@ -89,16 +89,31 @@ export function useScenes(category?: string) {
   }, [category, supabase]);
 
   const filteredScenes = scenes.filter((scene) => {
+    // NEVER hide the user's own scenes from them, no matter what
+    if (currentUserId && scene.host_id === currentUserId) return true;
+
     const participants = scene.scene_participants?.length || 0;
     if (participants > 0) return true;
     
     // Auto remove empty rooms after 5 minutes
     // Ensure we parse the timestamp as UTC to prevent timezone bugs
     let createdStr = scene.created_at;
+    createdStr = createdStr.replace(' ', 'T'); // Fix for Safari/iOS
+    
     if (!createdStr.endsWith('Z') && !createdStr.includes('+')) {
       createdStr += 'Z';
     }
-    const ageMs = Date.now() - new Date(createdStr).getTime();
+    
+    const createdDate = new Date(createdStr);
+    
+    // If parsing completely fails, keep the scene visible to be safe
+    if (isNaN(createdDate.getTime())) return true;
+    
+    const ageMs = Date.now() - createdDate.getTime();
+    
+    // If computer clock is behind the server clock, ageMs will be negative. Keep visible.
+    if (ageMs < 0) return true;
+    
     return ageMs < 5 * 60 * 1000;
   });
 
