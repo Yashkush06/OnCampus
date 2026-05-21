@@ -63,7 +63,7 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.5 }}
             className="w-full flex flex-col gap-4"
           >
-            <Link href="/onboarding">
+            <Link href="/login">
               <button className="w-full py-4 rounded-2xl bg-white text-black font-bold text-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform active:scale-[0.98]">
                 Get Started
                 <ArrowRight size={20} />
