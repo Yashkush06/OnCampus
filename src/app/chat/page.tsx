@@ -51,7 +51,7 @@ export default function ChatInboxPage() {
       try {
         const { data, error } = await supabase
           .from('scene_participants')
-          .select('scene:scenes(*, host:profiles(*), scene_participants(user_id))')
+          .select('scene:scenes(*, host:profiles!scenes_host_id_fkey(*), scene_participants(user_id))')
           .eq('user_id', currentUserId);
           
         if (data) {
