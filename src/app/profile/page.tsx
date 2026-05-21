@@ -109,8 +109,13 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-bg-dark h-[100dvh]">
-        <p className="text-white/50">Please log in to view your profile.</p>
+      <div className="flex-1 flex flex-col items-center justify-center bg-bg-dark h-[100dvh] p-6 text-center">
+        <p className="text-white/50 mb-6">Please log in to view your profile and manage your status.</p>
+        <Link href="/login" className="w-full max-w-[200px]">
+          <button className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-neon-blue)] to-[var(--color-neon-purple)] text-white font-bold glow-blue hover:scale-[1.02] transition-transform">
+            Log In or Sign Up
+          </button>
+        </Link>
       </div>
     );
   }

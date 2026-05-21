@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, MoreVertical, Send, Image as ImageIcon, MapPin, Smile, Share2 } from "lucide-react";
+import { ChevronLeft, MoreVertical, Send, Image as ImageIcon, MapPin, Smile, Share2, Navigation } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -151,6 +151,23 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
       setIsUploadingImage(false);
       e.target.value = "";
     }
+  };
+
+  const handleShareLocation = () => {
+    if (!currentUserId || !navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        await sendMessage(`![location](${latitude},${longitude})`, currentUserId);
+      },
+      (error) => {
+        alert("Unable to retrieve your location: " + error.message);
+      }
+    );
   };
 
   const handleShareScene = async () => {
@@ -310,6 +327,19 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
                         className="max-w-[220px] max-h-[300px] rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity border border-white/10 shadow-lg" 
                         onClick={() => window.open(msg.content.slice(9, -1), '_blank')}
                       />
+                    ) : msg.content.startsWith("![location](") ? (
+                      <a 
+                        href={`https://maps.google.com/?q=${msg.content.slice(12, -1)}`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-xl transition-colors border",
+                          isMe ? "bg-white/20 hover:bg-white/30 border-white/30" : "bg-black/20 hover:bg-black/30 border-white/10"
+                        )}
+                      >
+                         <MapPin size={20} className={isMe ? "text-white" : "text-[var(--color-neon-blue)]"} />
+                         <span className="text-sm font-bold">Live Location</span>
+                      </a>
                     ) : (
                       <p className="text-[15px] leading-snug break-words">{msg.content}</p>
                     )}
@@ -371,6 +401,13 @@ export default function LiveRoomPage({ params }: { params: Promise<{ id: string 
               <ImageIcon size={20} className="text-white/70" />
             )}
           </label>
+
+          <button 
+            onClick={handleShareLocation}
+            className="w-10 h-10 rounded-full glassmorphism flex-shrink-0 flex items-center justify-center hover:bg-white/10 transition-colors"
+          >
+            <Navigation size={18} className="text-white/70" />
+          </button>
           
           <div className="flex-1 glassmorphism rounded-3xl border border-white/10 flex items-center pr-1.5 focus-within:border-white/30 transition-colors">
             <input 
