@@ -93,7 +93,12 @@ export function useScenes(category?: string) {
     if (participants > 0) return true;
     
     // Auto remove empty rooms after 5 minutes
-    const ageMs = Date.now() - new Date(scene.created_at).getTime();
+    // Ensure we parse the timestamp as UTC to prevent timezone bugs
+    let createdStr = scene.created_at;
+    if (!createdStr.endsWith('Z') && !createdStr.includes('+')) {
+      createdStr += 'Z';
+    }
+    const ageMs = Date.now() - new Date(createdStr).getTime();
     return ageMs < 5 * 60 * 1000;
   });
 
