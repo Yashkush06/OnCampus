@@ -230,14 +230,14 @@ function GlobalChatRoom({ sceneId, currentUserId }: { sceneId: string, currentUs
             )}
           </label>
           
-          <div className="flex-1 glassmorphism rounded-3xl border border-white/10 flex items-center pr-1.5 focus-within:border-white/30 transition-colors">
+          <div className="flex-1 min-w-0 glassmorphism rounded-3xl border border-white/10 flex items-center pr-1.5 focus-within:border-white/30 transition-colors">
             <input 
               type="text" 
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Message the campus..."
-              className="flex-1 bg-transparent py-3 pl-4 text-[15px] focus:outline-none placeholder-white/40"
+              className="flex-1 min-w-0 bg-transparent py-3 pl-4 text-[15px] focus:outline-none placeholder-white/40"
             />
             <button 
               onClick={() => setShowReactions(!showReactions)}
