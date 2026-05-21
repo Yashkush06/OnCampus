@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, UserPlus, Check, X, Users, Zap } from "lucide-react";
+import { Search, UserPlus, Check, X, Users, Zap, Hand, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -44,6 +44,25 @@ export default function FriendsPage() {
         }
       });
 
+      // Now fetch active scenes hosted by these active friends
+      if (activeFriends.length > 0) {
+        const friendIds = activeFriends.map(f => f.friendProfile.id);
+        const { data: activeScenes } = await supabase
+          .from("scenes")
+          .select("id, title, host_id, vibe_tag")
+          .eq("is_active", true)
+          .in("host_id", friendIds);
+
+        if (activeScenes && activeScenes.length > 0) {
+          activeFriends.forEach(f => {
+            const hostScene = activeScenes.find(s => s.host_id === f.friendProfile.id);
+            if (hostScene) {
+              f.activeScene = hostScene;
+            }
+          });
+        }
+      }
+
       setFriends(activeFriends);
       setRequests(pendingReqs);
     }
@@ -83,6 +102,36 @@ export default function FriendsPage() {
     }
     // Optimistic UI update handled by subscription
     if (currentUserId) fetchFriendsData(currentUserId);
+  };
+
+  const handlePoke = async (e: React.MouseEvent, targetUserId: string, targetName: string) => {
+    e.stopPropagation(); // Prevent routing to user profile
+    
+    // Broadcast poke event
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: myProfile } = await supabase.from('profiles').select('full_name, username').eq('id', user.id).single();
+    const myName = myProfile?.full_name || myProfile?.username || "Someone";
+
+    supabase.channel('global-notifications').send({
+      type: 'broadcast',
+      event: 'poke',
+      payload: {
+        target_id: targetUserId,
+        sender_name: myName
+      }
+    });
+    
+    // Just a visual confirmation for the sender
+    const btn = e.currentTarget as HTMLButtonElement;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="text-xs font-bold text-white">Sent!</span>';
+    btn.classList.add("bg-[var(--color-neon-blue)]");
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+      btn.classList.remove("bg-[var(--color-neon-blue)]");
+    }, 2000);
   };
 
   const filteredFriends = friends.filter((f) => {
@@ -159,26 +208,60 @@ export default function FriendsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     key={f.id}
                     onClick={() => router.push(`/user/${profile.id}`)}
-                    className="w-full glassmorphism rounded-2xl p-4 border border-white/5 flex items-center gap-4 cursor-pointer hover:border-white/15 hover:bg-white/5 transition-all relative overflow-hidden"
+                    className="w-full glassmorphism rounded-3xl p-4 border border-white/5 flex flex-col gap-3 cursor-pointer hover:border-white/15 hover:bg-white/5 transition-all relative overflow-hidden shadow-lg"
                   >
-                    <div className="relative">
-                      <div className={cn(
-                        "w-12 h-12 rounded-full overflow-hidden border-2",
-                        isFree ? "border-[var(--color-neon-pink)] glow-pink" : "border-white/20"
-                      )}>
-                        <img src={profile.avatar_url || "https://i.pravatar.cc/150?img=12"} alt="User" className="w-full h-full object-cover" />
-                      </div>
-                      {isFree && (
-                        <div className="absolute -bottom-1 -right-1 bg-[var(--color-neon-pink)] rounded-full w-4 h-4 flex items-center justify-center border-2 border-bg-dark">
-                          <Zap size={8} fill="white" className="text-white" />
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className={cn(
+                          "w-14 h-14 rounded-full overflow-hidden border-2",
+                          isFree ? "border-[var(--color-neon-pink)] glow-pink" : "border-white/20"
+                        )}>
+                          <img src={profile.avatar_url || "https://i.pravatar.cc/150?img=12"} alt="User" className="w-full h-full object-cover" />
                         </div>
-                      )}
+                        {isFree && (
+                          <div className="absolute -bottom-1 -right-1 bg-[var(--color-neon-pink)] rounded-full w-5 h-5 flex items-center justify-center border-2 border-bg-dark">
+                            <Zap size={10} fill="white" className="text-white" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <h3 className="font-bold text-base text-white truncate">{profile.full_name || profile.username}</h3>
+                        <p className="text-sm text-white/50 truncate">@{profile.username}</p>
+                        {isFree && (
+                           <span className="text-[10px] font-bold text-[var(--color-neon-pink)] uppercase tracking-wider mt-0.5">Free to hangout!</span>
+                        )}
+                      </div>
+                      
+                      <button 
+                        onClick={(e) => handlePoke(e, profile.id, profile.full_name || profile.username)}
+                        className="w-10 h-10 rounded-full glassmorphism border border-white/10 flex items-center justify-center shrink-0 hover:bg-white/10 transition-colors"
+                        title="Poke!"
+                      >
+                        <Hand size={18} className="text-[var(--color-neon-blue)]" />
+                      </button>
                     </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-sm text-white truncate">{profile.full_name || profile.username}</h3>
-                      <p className="text-xs text-white/50 truncate">@{profile.username}</p>
-                    </div>
+
+                    {f.activeScene && (
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/room/${f.activeScene.id}`);
+                        }}
+                        className="w-full mt-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex items-center justify-between transition-colors group"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-[var(--color-neon-blue)] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-neon-blue)] animate-pulse" />
+                            Live Room
+                          </span>
+                          <span className="font-semibold text-sm text-white truncate max-w-[200px]">{f.activeScene.title}</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all">
+                          <Play size={14} className="ml-0.5" />
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}

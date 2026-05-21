@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, PlusCircle, MessageCircle, User, Users } from "lucide-react";
+import { Home, Search, PlusCircle, MessageCircle, User, Users, Hand } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { name: "Home", href: "/feed", icon: Home },
@@ -16,6 +18,34 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [pokeNotification, setPokeNotification] = useState<{ senderName: string, id: number } | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let currentUserId: string | null = null;
+    
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        currentUserId = data.user.id;
+      }
+    });
+
+    const channel = supabase.channel('global-notifications')
+      .on('broadcast', { event: 'poke' }, (payload) => {
+        if (currentUserId && payload.payload.target_id === currentUserId) {
+          const id = Date.now();
+          setPokeNotification({ senderName: payload.payload.sender_name, id });
+          setTimeout(() => {
+            setPokeNotification(prev => prev?.id === id ? null : prev);
+          }, 4000);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Hide nav on landing, onboarding, auth pages, and live rooms
   if (
@@ -69,6 +99,26 @@ export function BottomNav() {
           })}
         </div>
       </div>
+
+      {/* Global Poke Toast */}
+      <AnimatePresence>
+        {pokeNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="absolute -top-16 left-1/2 -translate-x-1/2 glassmorphism rounded-2xl px-5 py-3 flex items-center gap-3 border border-[var(--color-neon-blue)]/50 shadow-[0_0_20px_rgba(0,240,255,0.2)] z-50 pointer-events-none"
+          >
+            <div className="w-8 h-8 rounded-full bg-[var(--color-neon-blue)]/20 flex items-center justify-center shrink-0">
+              <Hand size={18} className="text-[var(--color-neon-blue)] animate-bounce" />
+            </div>
+            <div className="flex flex-col whitespace-nowrap pr-2">
+              <span className="text-sm font-bold text-white leading-tight">{pokeNotification.senderName} poked you!</span>
+              <span className="text-xs text-white/60">Say hi back! 👋</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
