@@ -68,9 +68,8 @@ export default function FeedPage() {
 
       {/* Top Bar */}
       <div className="px-6 py-4 flex justify-between items-center z-10 bg-bg-dark/80 backdrop-blur-md border-b border-white/5">
-        <div>
-          <p className="text-xs text-[var(--color-neon-blue)] font-medium tracking-wider uppercase">Campus is alive</p>
-          <h1 className="text-2xl font-bold">The Scene</h1>
+        <div className="h-10 bg-white/95 p-1.5 rounded-lg shadow-[0_0_15px_rgba(0,255,255,0.2)]">
+          <img src="/logo1.png" alt="OnCampus Logo" className="h-full w-auto object-contain" />
         </div>
         <div className="flex items-center gap-3">
           <Link href="/discover">
