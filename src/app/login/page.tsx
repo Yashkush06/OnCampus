@@ -51,8 +51,8 @@ export default function LoginPage() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-[340px] z-10 flex flex-col items-center"
       >
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[var(--color-neon-blue)] to-[var(--color-neon-purple)] flex items-center justify-center glow-blue mb-8">
-          <span className="text-2xl font-bold text-white">OC</span>
+        <div className="w-24 h-24 mb-6 relative">
+          <img src="/logo.png" alt="OnCampus Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,255,255,0.5)]" />
         </div>
 
         <h1 className="text-3xl font-bold mb-2">Welcome to OnCampus</h1>

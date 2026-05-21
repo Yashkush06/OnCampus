@@ -20,8 +20,8 @@ export default function LandingPage() {
           className="absolute top-8 left-6"
         >
           <div className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[var(--color-neon-blue)] to-[var(--color-neon-purple)] flex items-center justify-center glow-blue">
-              <Zap size={18} className="text-white" fill="white" />
+            <div className="w-8 h-8 rounded-md overflow-hidden relative glow-blue">
+              <img src="/logo.png" alt="OnCampus Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-gradient">OnCampus</span>
           </div>
@@ -69,7 +69,7 @@ export default function LandingPage() {
                 <ArrowRight size={20} />
               </button>
             </Link>
-            <p className="text-xs text-white/40">Requires verified college email</p>
+            <p className="text-xs text-white/40">Join the scene instantly</p>
           </motion.div>
         </div>
 
